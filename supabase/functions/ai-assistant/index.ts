@@ -124,8 +124,31 @@ Keep responses concise and professional.`;
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', response.status, response.statusText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, response.statusText, errorText);
+      
+      // Handle specific OpenAI errors
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ 
+          error: 'OpenAI rate limit exceeded. Please try again in a few moments.',
+          details: 'The AI service is temporarily overloaded. Please wait and try again.'
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (response.status === 401) {
+        return new Response(JSON.stringify({ 
+          error: 'AI service authentication failed',
+          details: 'Invalid API key configuration'
+        }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
