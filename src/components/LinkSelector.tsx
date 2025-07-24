@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Link2, Terminal, FileText, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 
 interface LinkableItem {
   id: string;
@@ -38,6 +39,7 @@ const LinkSelector: React.FC<LinkSelectorProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOnline } = useOfflineStorage();
   const [searchQuery, setSearchQuery] = useState('');
   const [availableItems, setAvailableItems] = useState<LinkableItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,14 @@ const LinkSelector: React.FC<LinkSelectorProps> = ({
 
   const fetchAvailableItems = async () => {
     if (!user) return;
+    
+    // Don't fetch when offline
+    if (!isOnline) {
+      setAvailableItems([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -93,11 +103,8 @@ const LinkSelector: React.FC<LinkSelectorProps> = ({
 
       setAvailableItems(allItems);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error fetching items',
-        description: error.message,
-      });
+      console.log('Link search unavailable offline');
+      setAvailableItems([]);
     } finally {
       setLoading(false);
     }
@@ -154,15 +161,16 @@ const LinkSelector: React.FC<LinkSelectorProps> = ({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="Search notes and commands to link..."
+          placeholder={isOnline ? "Search notes and commands to link..." : "Link search unavailable offline"}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
+          disabled={!isOnline}
         />
       </div>
 
       {/* Available Items */}
-      {searchQuery && (
+      {searchQuery && isOnline && (
         <Card>
           <CardContent className="p-2">
             <ScrollArea className="h-40">

@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Link2, Terminal, FileText, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 
 interface LinkedItem {
   id: string;
@@ -28,6 +29,7 @@ const LinkedItems: React.FC<LinkedItemsProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOnline } = useOfflineStorage();
   const [linkedItems, setLinkedItems] = useState<LinkedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +41,14 @@ const LinkedItems: React.FC<LinkedItemsProps> = ({
 
   const fetchLinkedItems = async () => {
     if (!user || !itemId) return;
+    
+    // Don't fetch links when offline
+    if (!isOnline) {
+      setLinkedItems([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -103,11 +113,8 @@ const LinkedItems: React.FC<LinkedItemsProps> = ({
 
       setLinkedItems(items);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading linked items',
-        description: error.message,
-      });
+      console.log('Links unavailable offline');
+      setLinkedItems([]);
     } finally {
       setLoading(false);
     }

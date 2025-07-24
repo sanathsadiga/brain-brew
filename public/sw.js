@@ -5,8 +5,6 @@ const API_CACHE = 'devnotes-api-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/src/main.tsx',
-  '/src/index.css',
   '/manifest.json'
 ];
 
