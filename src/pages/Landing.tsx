@@ -38,7 +38,7 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
 
   return (
     <span className="relative inline-block text-5xl font-bold">
-      <span className="bg-gradient-to-r from-primary to-primary-foreground bg-clip-text text-transparent">
+      <span className="text-primary">
         {displayText}
       </span>
       <span className={`inline-block w-0.5 h-12 bg-primary ml-1 ${showCursor ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`} />
