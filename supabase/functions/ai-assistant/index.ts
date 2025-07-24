@@ -25,7 +25,10 @@ serve(async (req) => {
   try {
     const { command, title, description, action } = await req.json();
 
+    console.log('Received request:', { command, title, description, action });
+
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found');
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

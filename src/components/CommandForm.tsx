@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -184,6 +184,9 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
           <DialogTitle>
             {command ? 'Edit Command' : 'Add New Command'}
           </DialogTitle>
+          <DialogDescription>
+            {command ? 'Update your command details and use AI analysis for suggestions.' : 'Create a new command and get AI-powered suggestions for tags, descriptions, and improvements.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
