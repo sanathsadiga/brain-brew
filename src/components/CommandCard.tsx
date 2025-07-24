@@ -6,6 +6,7 @@ import { Copy, Edit, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import LinkedItems from './LinkedItems';
 
 interface Command {
   id: string;
@@ -154,6 +155,8 @@ const CommandCard: React.FC<CommandCardProps> = ({ command, onEdit, onDelete }) 
             ))}
           </div>
         )}
+        
+        <LinkedItems itemId={command.id} itemType="command" />
         
         <div className="text-xs text-muted-foreground">
           Created: {new Date(command.created_at).toLocaleDateString()}

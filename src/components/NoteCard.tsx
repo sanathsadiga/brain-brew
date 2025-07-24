@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2 } from 'lucide-react';
+import LinkedItems from './LinkedItems';
 
 interface Note {
   id: string;
@@ -59,6 +60,8 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onEdit, onDelete }) => {
             ))}
           </div>
         )}
+        
+        <LinkedItems itemId={note.id} itemType="note" />
         
         <div className="text-xs text-muted-foreground">
           Created: {new Date(note.created_at).toLocaleDateString()}
