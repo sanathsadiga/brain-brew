@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -119,6 +119,9 @@ const NoteForm: React.FC<NoteFormProps> = ({ isOpen, onOpenChange, note, onSucce
           <DialogTitle>
             {note ? 'Edit Note' : 'Add New Note'}
           </DialogTitle>
+          <DialogDescription>
+            {note ? 'Update your note details and organize with tags.' : 'Create a new note and organize it with tags for easy searching.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
