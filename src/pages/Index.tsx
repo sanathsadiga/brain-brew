@@ -11,6 +11,8 @@ import CommandCard from '@/components/CommandCard';
 import NoteCard from '@/components/NoteCard';
 import CommandForm from '@/components/CommandForm';
 import NoteForm from '@/components/NoteForm';
+import OfflineIndicator from '@/components/OfflineIndicator';
+import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 
 interface Command {
   id: string;
@@ -34,6 +36,7 @@ interface Note {
 const Index = () => {
   const { user, signOut, loading } = useAuth();
   const { toast } = useToast();
+  const { isOnline, cacheData, getCachedData, addPendingAction } = useOfflineStorage();
 
   const [commands, setCommands] = useState<Command[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -53,6 +56,22 @@ const Index = () => {
   const fetchData = async () => {
     if (!user) return;
     setDataLoading(true);
+    
+    // Try to load from cache first if offline
+    if (!isOnline) {
+      const cachedData = getCachedData();
+      if (cachedData) {
+        setCommands(cachedData.commands || []);
+        setNotes(cachedData.notes || []);
+        setDataLoading(false);
+        toast({
+          title: 'Loaded from cache',
+          description: `Last synced: ${new Date(cachedData.lastSync).toLocaleString()}`,
+        });
+        return;
+      }
+    }
+
     try {
       const [commandsResult, notesResult] = await Promise.all([
         supabase
@@ -70,14 +89,31 @@ const Index = () => {
       if (commandsResult.error) throw commandsResult.error;
       if (notesResult.error) throw notesResult.error;
 
-      setCommands(commandsResult.data || []);
-      setNotes(notesResult.data || []);
+      const commandsData = commandsResult.data || [];
+      const notesData = notesResult.data || [];
+
+      setCommands(commandsData);
+      setNotes(notesData);
+      
+      // Cache the data for offline use
+      cacheData(commandsData, notesData);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error loading data',
-        description: error.message,
-      });
+      // If network fails, try to load from cache
+      const cachedData = getCachedData();
+      if (cachedData) {
+        setCommands(cachedData.commands || []);
+        setNotes(cachedData.notes || []);
+        toast({
+          title: 'Loaded from cache',
+          description: 'Using offline data. Will sync when online.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error loading data',
+          description: error.message,
+        });
+      }
     } finally {
       setDataLoading(false);
     }
@@ -95,18 +131,30 @@ const Index = () => {
   };
 
   const handleDelete = async (id: string, type: 'commands' | 'notes') => {
-    try {
-      const { error } = await supabase.from(type).delete().eq('id', id);
-      if (error) throw error;
+    // Optimistically update UI
+    if (type === 'commands') setCommands(commands.filter((c) => c.id !== id));
+    else setNotes(notes.filter((n) => n.id !== id));
 
-      if (type === 'commands') setCommands(commands.filter((c) => c.id !== id));
-      else setNotes(notes.filter((n) => n.id !== id));
+    try {
+      if (isOnline) {
+        const { error } = await supabase.from(type).delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        // Store for later sync
+        addPendingAction({
+          type: 'delete',
+          table: type,
+          data: { id }
+        });
+      }
 
       toast({
         title: `${type === 'commands' ? 'Command' : 'Note'} deleted`,
-        description: 'Deleted successfully.',
+        description: isOnline ? 'Deleted successfully.' : 'Will sync when online.',
       });
     } catch (error: any) {
+      // Revert optimistic update
+      fetchData();
       toast({
         variant: 'destructive',
         title: `Error deleting ${type === 'commands' ? 'command' : 'note'}`,
@@ -150,6 +198,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
+      <OfflineIndicator />
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">

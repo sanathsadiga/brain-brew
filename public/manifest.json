@@ -1,0 +1,47 @@
+{
+  "name": "DevNotes",
+  "short_name": "DevNotes",
+  "description": "A developer's note and command manager with offline support",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/devnotes-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "/",
+  "lang": "en",
+  "categories": ["productivity", "developer", "notes"],
+  "shortcuts": [
+    {
+      "name": "Add Command",
+      "short_name": "Command",
+      "description": "Add a new command",
+      "url": "/?action=add-command",
+      "icons": [
+        {
+          "src": "/devnotes-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Add Note",
+      "short_name": "Note", 
+      "description": "Add a new note",
+      "url": "/?action=add-note",
+      "icons": [
+        {
+          "src": "/devnotes-logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}
