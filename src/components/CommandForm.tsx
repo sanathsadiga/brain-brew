@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, AlertTriangle, CheckCircle, X } from 'lucide-react';
 
 interface Command {
   id: string;
@@ -26,6 +28,14 @@ interface CommandFormProps {
   onSuccess: () => void;
 }
 
+interface AIAnalysis {
+  suggestedTags: string[];
+  category: string;
+  improvements: string[];
+  security_warnings?: string[];
+  description?: string;
+}
+
 const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command, onSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -36,6 +46,9 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
     description: '',
     tags: '',
   });
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
 
   useEffect(() => {
     if (command) {
@@ -54,6 +67,52 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
       });
     }
   }, [command, isOpen]);
+
+  const analyzeCommand = async () => {
+    if (!formData.command.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'No command to analyze',
+        description: 'Please enter a command first.',
+      });
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const response = await supabase.functions.invoke('ai-assistant', {
+        body: {
+          command: formData.command,
+          title: formData.title,
+          description: formData.description,
+          action: 'analyze'
+        }
+      });
+
+      if (response.error) throw response.error;
+      
+      setAiAnalysis(response.data);
+      setShowAiSuggestions(true);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'AI Analysis Failed',
+        description: error.message || 'Could not analyze command.',
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applySuggestion = (type: 'tags' | 'description', value: string | string[]) => {
+    if (type === 'tags' && Array.isArray(value)) {
+      const currentTags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
+      const newTags = [...new Set([...currentTags, ...value])];
+      setFormData({ ...formData, tags: newTags.join(', ') });
+    } else if (type === 'description' && typeof value === 'string') {
+      setFormData({ ...formData, description: value });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +179,7 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {command ? 'Edit Command' : 'Add New Command'}
@@ -139,16 +198,136 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="command">Command *</Label>
-            <Input
+            <div className="flex items-center justify-between">
+              <Label htmlFor="command">Command *</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={analyzeCommand}
+                disabled={aiLoading || !formData.command.trim()}
+                className="gap-2"
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                AI Analyze
+              </Button>
+            </div>
+            <Textarea
               id="command"
               value={formData.command}
               onChange={(e) => setFormData({ ...formData, command: e.target.value })}
               placeholder="e.g., ls -la"
               required
               className="font-mono"
+              rows={3}
             />
           </div>
+
+          {/* AI Suggestions */}
+          {showAiSuggestions && aiAnalysis && (
+            <Card className="border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    AI Suggestions
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAiSuggestions(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Security Warnings */}
+                {aiAnalysis.security_warnings && aiAnalysis.security_warnings.length > 0 && (
+                  <div className="p-3 border border-destructive/20 bg-destructive/5 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <span className="text-sm font-medium text-destructive">Security Warnings</span>
+                    </div>
+                    <ul className="text-sm space-y-1">
+                      {aiAnalysis.security_warnings.map((warning, i) => (
+                        <li key={i} className="text-muted-foreground">• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Suggested Tags */}
+                {aiAnalysis.suggestedTags && aiAnalysis.suggestedTags.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Suggested Tags</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => applySuggestion('tags', aiAnalysis.suggestedTags)}
+                      >
+                        Apply All
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {aiAnalysis.suggestedTags.map((tag, i) => (
+                        <Badge 
+                          key={i} 
+                          variant="outline" 
+                          className="cursor-pointer hover:bg-primary/10"
+                          onClick={() => applySuggestion('tags', [tag])}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested Description */}
+                {aiAnalysis.description && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Suggested Description</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => applySuggestion('description', aiAnalysis.description!)}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                      {aiAnalysis.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Improvements */}
+                {aiAnalysis.improvements && aiAnalysis.improvements.length > 0 && (
+                  <div>
+                    <span className="text-sm font-medium">Suggested Improvements</span>
+                    <ul className="text-sm mt-2 space-y-1">
+                      {aiAnalysis.improvements.map((improvement, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{improvement}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>

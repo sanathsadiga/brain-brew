@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Edit, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Command {
   id: string;
@@ -21,9 +23,50 @@ interface CommandCardProps {
   onDelete: (id: string) => void;
 }
 
+// Helper function to detect programming language
+const detectLanguage = (command: string): string => {
+  const cmd = command.toLowerCase().trim();
+  
+  // Shell/Bash commands
+  if (cmd.startsWith('docker') || cmd.startsWith('kubectl') || cmd.startsWith('git') ||
+      cmd.startsWith('npm') || cmd.startsWith('yarn') || cmd.startsWith('pip') ||
+      cmd.startsWith('curl') || cmd.startsWith('wget') || cmd.startsWith('ssh') ||
+      cmd.startsWith('rsync') || cmd.startsWith('grep') || cmd.startsWith('awk') ||
+      cmd.startsWith('sed') || cmd.startsWith('find') || cmd.startsWith('ls') ||
+      cmd.startsWith('cd ') || cmd.startsWith('mkdir') || cmd.startsWith('rm ') ||
+      cmd.startsWith('cp ') || cmd.startsWith('mv ') || cmd.startsWith('chmod') ||
+      cmd.startsWith('chown') || cmd.startsWith('ps ') || cmd.startsWith('kill ') ||
+      cmd.startsWith('systemctl') || cmd.startsWith('service ') || cmd.startsWith('crontab')) {
+    return 'bash';
+  }
+  
+  // SQL
+  if (cmd.startsWith('select') || cmd.startsWith('insert') || cmd.startsWith('update') ||
+      cmd.startsWith('delete') || cmd.startsWith('create') || cmd.startsWith('alter') ||
+      cmd.startsWith('drop') || cmd.includes('from ') || cmd.includes('where ')) {
+    return 'sql';
+  }
+  
+  // Python
+  if (cmd.startsWith('python') || cmd.startsWith('pip') || cmd.includes('import ') ||
+      cmd.includes('def ') || cmd.includes('class ') || cmd.includes('print(')) {
+    return 'python';
+  }
+  
+  // JavaScript/Node
+  if (cmd.startsWith('node') || cmd.startsWith('npx') || cmd.includes('console.log') ||
+      cmd.includes('function') || cmd.includes('const ') || cmd.includes('let ')) {
+    return 'javascript';
+  }
+  
+  // Default to bash for most CLI commands
+  return 'bash';
+};
+
 const CommandCard: React.FC<CommandCardProps> = ({ command, onEdit, onDelete }) => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const language = detectLanguage(command.command);
 
   const handleCopy = async () => {
     try {
@@ -81,8 +124,21 @@ const CommandCard: React.FC<CommandCardProps> = ({ command, onEdit, onDelete }) 
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="code-block">
-          <code>{command.command}</code>
+        <div className="rounded-md overflow-hidden">
+          <SyntaxHighlighter
+            language={language}
+            style={oneDark}
+            customStyle={{
+              margin: 0,
+              padding: '12px',
+              fontSize: '14px',
+              lineHeight: '1.4',
+            }}
+            wrapLines={true}
+            wrapLongLines={true}
+          >
+            {command.command}
+          </SyntaxHighlighter>
         </div>
         
         {command.description && (
