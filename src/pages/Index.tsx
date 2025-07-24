@@ -198,7 +198,10 @@ const Index = () => {
               dataLoading={dataLoading}
               items={filteredCommands}
               openForm={() => setCommandFormOpen(true)}
-              onEdit={setEditingCommand}
+              onEdit={(command) => {
+                setEditingCommand(command);
+                setCommandFormOpen(true);
+              }}
               onDelete={(id) => handleDelete(id, 'commands')}
             />
           </TabsContent>
@@ -210,7 +213,10 @@ const Index = () => {
               dataLoading={dataLoading}
               items={filteredNotes}
               openForm={() => setNoteFormOpen(true)}
-              onEdit={setEditingNote}
+              onEdit={(note) => {
+                setEditingNote(note);
+                setNoteFormOpen(true);
+              }}
               onDelete={(id) => handleDelete(id, 'notes')}
             />
           </TabsContent>
