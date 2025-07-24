@@ -294,7 +294,7 @@ const TabContent = ({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <Card key={item.id} {...{ [type]: item }} onEdit={onEdit} onDelete={onDelete} />
+            <Card key={item.id} {...(type === 'command' ? { command: item } : { note: item })} onEdit={onEdit} onDelete={onDelete} />
           ))}
         </div>
       )}
