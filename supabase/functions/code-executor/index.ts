@@ -1,9 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Initialize Supabase client for authentication
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 interface ExecuteRequest {
   code: string;
@@ -24,10 +30,64 @@ serve(async (req) => {
   }
 
   try {
+    // Verify JWT token and get user
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader) {
+      throw new Error('Authorization header required')
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      throw new Error('Invalid or expired token')
+    }
+
     const { code, language }: ExecuteRequest = await req.json()
 
     if (!code || !language) {
       throw new Error('Code and language are required')
+    }
+
+    // Input validation and sanitization
+    if (code.length > 10000) {
+      throw new Error('Code too long (max 10,000 characters)')
+    }
+
+    if (!['javascript', 'python', 'bash', 'sql'].includes(language)) {
+      throw new Error('Unsupported language')
+    }
+
+    // Security check - block dangerous patterns
+    const dangerousPatterns = [
+      /require\s*\(\s*['"]child_process['"]/, // Node.js child_process
+      /import\s+.*child_process/, // ES6 import child_process
+      /eval\s*\(/, // eval function
+      /Function\s*\(/, // Function constructor
+      /process\./, // process object access
+      /fs\./, // File system access
+      /\.exec\s*\(/, // exec methods
+      /spawn\s*\(/, // spawn processes
+      /fork\s*\(/, // fork processes
+      /__import__/, // Python import bypass
+      /exec\s*\(/, // Python exec
+      /open\s*\(/, // File operations
+      /subprocess/, // Python subprocess
+      /os\.system/, // OS system calls
+      /rm\s+-rf/, // Dangerous bash commands
+      /;\s*rm\s+/, // Command chaining with rm
+      /\|\s*rm\s+/, // Piped rm commands
+      /wget\s+/, // Download commands
+      /curl\s+/, // Download commands
+      /DROP\s+TABLE/i, // SQL drop commands
+      /DELETE\s+FROM/i, // SQL delete commands
+    ]
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(code)) {
+        console.warn(`Blocked dangerous code pattern for user ${user.id}: ${pattern}`)
+        throw new Error('Code contains potentially dangerous operations')
+      }
     }
 
     const startTime = performance.now()

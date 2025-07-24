@@ -10,7 +10,7 @@ const corsHeaders = {
 
 // Rate limiting - simple in-memory store (for production, use Redis or similar)
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 10; // requests per minute
+const RATE_LIMIT = 5; // Stricter rate limit - 5 requests per minute
 const RATE_WINDOW = 60 * 1000; // 1 minute
 
 const rateLimit = (clientId: string): boolean => {
@@ -25,18 +25,29 @@ const rateLimit = (clientId: string): boolean => {
   }
   
   requestCounts.set(clientId, record);
-  return record.count <= RATE_LIMIT;
+  
+  if (record.count > RATE_LIMIT) {
+    console.warn(`Rate limit exceeded for client: ${clientId}`);
+    return false;
+  }
+  
+  return true;
 };
 
 const sanitizeInput = (input: string): string => {
   if (!input || typeof input !== 'string') return '';
   
-  // Remove potential injection patterns and limit length
+  // Enhanced input sanitization
   return input
     .trim()
     .slice(0, 2000)
     .replace(/[<>]/g, '') // Basic XSS prevention
-    .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/data:/gi, '') // Remove data: protocol
+    .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .replace(/<script[^>]*>.*?<\/script>/gi, ''); // Remove script tags
 };
 
 const validateRequest = (body: any): { command: string; title?: string; description?: string } => {

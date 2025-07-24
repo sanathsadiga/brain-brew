@@ -154,11 +154,19 @@ const CodeRunner: React.FC<CodeRunnerProps> = ({
     setActiveTab('output');
 
     try {
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) {
+        throw new Error('Authentication required');
+      }
+
       const { data, error } = await supabase.functions.invoke('code-executor', {
         body: {
           code: code.trim(),
           language,
-        }
+        },
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
       });
 
       if (error) throw error;

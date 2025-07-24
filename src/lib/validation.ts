@@ -13,17 +13,45 @@ export const sanitizeText = (text: string): string => {
 export const sanitizeCommand = (command: string): string => {
   if (!command) return '';
   
-  // Basic command sanitization - preserve necessary characters but remove dangerous patterns
+  // Enhanced command sanitization
   const sanitized = command
     .trim()
     .slice(0, 2000); // Limit length
   
-  // Check for potentially dangerous patterns
+  // Enhanced dangerous patterns detection
   const dangerousPatterns = [
     /rm\s+-rf\s+\//, // rm -rf /
     /:\(\)\{\s*:\s*\|\s*:\s*&\s*\}\s*;/, // Fork bomb pattern
     /eval\s*\(/, // eval commands
     /exec\s*\(/, // exec commands
+    /\$\(.*\)/, // Command substitution
+    /`.*`/, // Backtick command execution
+    /;\s*rm\s+/, // Command chaining with rm
+    /\|\s*rm\s+/, // Piped rm commands
+    /wget\s+/, // Download commands
+    /curl\s+.*\|/, // Piped curl commands
+    /nc\s+.*-e/, // Netcat with command execution
+    /bash\s+-i/, // Interactive bash
+    /sh\s+-i/, // Interactive shell
+    /\/dev\/tcp\//, // TCP redirections
+    /mkfifo\s+/, // Named pipes
+    /chmod\s+\+x/, // Making files executable
+    /sudo\s+/, // Sudo commands
+    /su\s+/, // Switch user
+    /passwd\s+/, // Password changes
+    /useradd\s+/, // User management
+    /userdel\s+/, // User management
+    /crontab\s+/, // Cron modifications
+    /systemctl\s+/, // System service control
+    /service\s+/, // Service control
+    /mount\s+/, // Filesystem mounting
+    /umount\s+/, // Filesystem unmounting
+    /dd\s+.*of=/, // Disk operations
+    /fdisk\s+/, // Disk partitioning
+    /format\s+/, // Disk formatting
+    />.*\/etc\//, // Writing to system directories
+    />.*\/var\//, // Writing to system directories
+    />.*\/usr\//, // Writing to system directories
   ];
   
   for (const pattern of dangerousPatterns) {
