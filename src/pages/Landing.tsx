@@ -8,16 +8,26 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showCursor, setShowCursor] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
-    if (currentIndex < text.length) {
+    // Start typing after a small delay
+    const startDelay = setTimeout(() => {
+      setHasStarted(true);
+    }, 500);
+    
+    return () => clearTimeout(startDelay);
+  }, []);
+
+  useEffect(() => {
+    if (hasStarted && currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayText(text.slice(0, currentIndex + 1));
         setCurrentIndex(currentIndex + 1);
       }, speed);
       return () => clearTimeout(timeout);
     }
-  }, [currentIndex, text, speed]);
+  }, [currentIndex, text, speed, hasStarted]);
 
   useEffect(() => {
     const cursorInterval = setInterval(() => {
@@ -27,9 +37,11 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
   }, []);
 
   return (
-    <span className="font-mono">
-      {displayText}
-      <span className={`inline-block w-0.5 h-8 bg-primary ml-1 ${showCursor ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`} />
+    <span className="relative inline-block">
+      <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        {displayText}
+      </span>
+      <span className={`inline-block w-0.5 h-12 bg-primary ml-1 ${showCursor ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`} />
     </span>
   );
 };
@@ -131,7 +143,7 @@ const Landing = () => {
           <div className="text-center max-w-4xl mx-auto">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Terminal className="h-12 w-12 text-primary" />
-              <h1 className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              <h1>
                 <TypingAnimation text="DevNotes" speed={200} />
               </h1>
             </div>
