@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Terminal, FileText, LogOut, Loader2 } from 'lucide-react';
+import { Search, Plus, Terminal, FileText, LogOut, Loader2, Code } from 'lucide-react';
 import CommandCard from '@/components/CommandCard';
 import NoteCard from '@/components/NoteCard';
 import CommandForm from '@/components/CommandForm';
 import NoteForm from '@/components/NoteForm';
 import OfflineIndicator from '@/components/OfflineIndicator';
+import CodeRunner from '@/components/CodeRunner';
 import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 
 interface Command {
@@ -44,6 +45,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('commands');
   const [commandFormOpen, setCommandFormOpen] = useState(false);
   const [noteFormOpen, setNoteFormOpen] = useState(false);
+  const [codeRunnerOpen, setCodeRunnerOpen] = useState(false);
   const [editingCommand, setEditingCommand] = useState<Command | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -206,10 +208,16 @@ const Index = () => {
             <Terminal className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">DevNotes</h1>
           </div>
-          <Button variant="ghost" onClick={handleSignOut} className="gap-2">
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setCodeRunnerOpen(true)} className="gap-2">
+              <Code className="h-4 w-4" />
+              Run Code
+            </Button>
+            <Button variant="ghost" onClick={handleSignOut} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -299,6 +307,11 @@ const Index = () => {
           setNoteFormOpen(false);
           setEditingNote(null);
         }}
+      />
+
+      <CodeRunner
+        isOpen={codeRunnerOpen}
+        onOpenChange={setCodeRunnerOpen}
       />
     </div>
   );
