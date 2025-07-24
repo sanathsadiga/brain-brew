@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 import { sanitizeText, sanitizeCommand, validateTags } from '@/lib/validation';
 import { Loader2, Sparkles, AlertTriangle, CheckCircle, X } from 'lucide-react';
 
@@ -40,6 +41,7 @@ interface AIAnalysis {
 const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command, onSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOnline, addPendingAction } = useOfflineStorage();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -138,42 +140,66 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
           .filter(tag => tag.length > 0)
       );
 
-      if (command) {
-        // Update existing command
-        const { error } = await supabase
-          .from('commands')
-          .update({
-            title: sanitizedTitle,
-            command: sanitizedCommand,
-            description: sanitizedDescription || null,
-            tags: tagsArray.length > 0 ? tagsArray : null,
-          })
-          .eq('id', command.id);
+      const commandData = {
+        title: sanitizedTitle,
+        command: sanitizedCommand,
+        description: sanitizedDescription || null,
+        tags: tagsArray.length > 0 ? tagsArray : null,
+        user_id: user.id,
+      };
 
-        if (error) throw error;
-        
-        toast({
-          title: "Command updated",
-          description: "Your command has been updated successfully.",
-        });
-      } else {
-        // Create new command
-        const { error } = await supabase
-          .from('commands')
-          .insert({
-            title: sanitizedTitle,
-            command: sanitizedCommand,
-            description: sanitizedDescription || null,
-            tags: tagsArray.length > 0 ? tagsArray : null,
-            user_id: user.id,
+      if (isOnline) {
+        if (command) {
+          // Update existing command
+          const { error } = await supabase
+            .from('commands')
+            .update(commandData)
+            .eq('id', command.id);
+
+          if (error) throw error;
+          
+          toast({
+            title: "Command updated",
+            description: "Your command has been updated successfully.",
           });
+        } else {
+          // Create new command
+          const { error } = await supabase
+            .from('commands')
+            .insert(commandData);
 
-        if (error) throw error;
-        
-        toast({
-          title: "Command created",
-          description: "Your command has been created successfully.",
-        });
+          if (error) throw error;
+          
+          toast({
+            title: "Command created",
+            description: "Your command has been created successfully.",
+          });
+        }
+      } else {
+        // Store for later sync when offline
+        if (command) {
+          addPendingAction({
+            type: 'update',
+            table: 'commands',
+            data: { id: command.id, ...commandData }
+          });
+          
+          toast({
+            title: "Command updated offline",
+            description: "Changes will sync when you're back online.",
+          });
+        } else {
+          addPendingAction({
+            type: 'create',
+            table: 'commands',
+            data: { ...commandData, id: crypto.randomUUID() }
+          });
+          
+          toast({
+            title: "Command created offline",
+            description: "Will sync when you're back online.",
+          });
+        }
       }
 
       onSuccess();

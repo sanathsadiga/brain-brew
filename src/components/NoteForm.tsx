@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useOfflineStorage } from '@/hooks/useOfflineStorage';
 import { sanitizeText, validateTags } from '@/lib/validation';
 import { Loader2 } from 'lucide-react';
 import LinkSelector from './LinkSelector';
@@ -36,6 +37,7 @@ interface SelectedLink {
 const NoteForm: React.FC<NoteFormProps> = ({ isOpen, onOpenChange, note, onSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOnline, addPendingAction } = useOfflineStorage();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -179,50 +181,78 @@ const NoteForm: React.FC<NoteFormProps> = ({ isOpen, onOpenChange, note, onSucce
           .filter(tag => tag.length > 0)
       );
 
+      const noteData = {
+        title: sanitizedTitle,
+        content: sanitizedContent,
+        tags: tagsArray.length > 0 ? tagsArray : null,
+        user_id: user.id,
+      };
+
       let noteId: string;
 
-      if (note) {
-        // Update existing note
-        const { error } = await supabase
-          .from('notes')
-          .update({
-            title: sanitizedTitle,
-            content: sanitizedContent,
-            tags: tagsArray.length > 0 ? tagsArray : null,
-          })
-          .eq('id', note.id);
+      if (isOnline) {
+        if (note) {
+          // Update existing note
+          const { error } = await supabase
+            .from('notes')
+            .update(noteData)
+            .eq('id', note.id);
 
-        if (error) throw error;
-        noteId = note.id;
-        
-        toast({
-          title: "Note updated",
-          description: "Your note has been updated successfully.",
-        });
+          if (error) throw error;
+          noteId = note.id;
+          
+          toast({
+            title: "Note updated",
+            description: "Your note has been updated successfully.",
+          });
+        } else {
+          // Create new note
+          const { data, error } = await supabase
+            .from('notes')
+            .insert(noteData)
+            .select()
+            .single();
+
+          if (error) throw error;
+          noteId = data.id;
+          
+          toast({
+            title: "Note created",
+            description: "Your note has been created successfully.",
+          });
+        }
+
+        // Save links only when online
+        await saveLinks(noteId);
       } else {
-        // Create new note
-        const { data, error } = await supabase
-          .from('notes')
-          .insert({
-            title: sanitizedTitle,
-            content: sanitizedContent,
-            tags: tagsArray.length > 0 ? tagsArray : null,
-            user_id: user.id,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        noteId = data.id;
-        
-        toast({
-          title: "Note created",
-          description: "Your note has been created successfully.",
-        });
+        // Store for later sync when offline
+        if (note) {
+          noteId = note.id;
+          addPendingAction({
+            type: 'update',
+            table: 'notes',
+            data: { id: note.id, ...noteData }
+          });
+          
+          toast({
+            title: "Note updated offline",
+            description: "Changes will sync when you're back online.",
+          });
+        } else {
+          noteId = crypto.randomUUID();
+          addPendingAction({
+            type: 'create',
+            table: 'notes',
+            data: { ...noteData, id: noteId }
+          });
+          
+          toast({
+            title: "Note created offline",
+            description: "Will sync when you're back online.",
+          });
+        }
+        // Skip saving links when offline for simplicity
       }
-
-      // Save links
-      await saveLinks(noteId);
 
       onSuccess();
       onOpenChange(false);
