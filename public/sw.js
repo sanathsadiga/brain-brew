@@ -62,26 +62,31 @@ self.addEventListener('fetch', (event) => {
 async function handleApiRequest(request) {
   const cache = await caches.open(API_CACHE);
   
-  // For GET requests, try cache first
-  if (request.method === 'GET') {
-    const cachedResponse = await cache.match(request);
-    
-    try {
-      const networkResponse = await fetch(request);
-      if (networkResponse.ok) {
-        cache.put(request, networkResponse.clone());
-        return networkResponse;
-      }
-    } catch (error) {
-      // Network failed, return cached response if available
-      if (cachedResponse) {
-        return cachedResponse;
+  try {
+    // For GET requests, try cache first
+    if (request.method === 'GET') {
+      const cachedResponse = await cache.match(request);
+      
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+          cache.put(request, networkResponse.clone());
+          return networkResponse;
+        }
+      } catch (error) {
+        // Network failed, return cached response if available
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // If no cache, return a proper error response
+        return new Response(JSON.stringify({ error: 'Network unavailable' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
-  }
-  
-  // For non-GET requests or when cache miss, try network
-  try {
+    
+    // For non-GET requests, try network
     const response = await fetch(request);
     return response;
   } catch (error) {
@@ -89,7 +94,12 @@ async function handleApiRequest(request) {
     if (['POST', 'PUT', 'DELETE'].includes(request.method)) {
       storeFailedRequest(request);
     }
-    throw error;
+    
+    // Return a proper error response instead of throwing
+    return new Response(JSON.stringify({ error: 'Network unavailable' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 

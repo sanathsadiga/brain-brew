@@ -34,10 +34,13 @@ const LinkedItems: React.FC<LinkedItemsProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && itemId) {
+    if (user && itemId && isOnline) {
       fetchLinkedItems();
+    } else if (!isOnline) {
+      setLinkedItems([]);
+      setLoading(false);
     }
-  }, [user, itemId, itemType]);
+  }, [user, itemId, itemType, isOnline]);
 
   const fetchLinkedItems = async () => {
     if (!user || !itemId) return;
