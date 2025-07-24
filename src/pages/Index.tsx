@@ -266,7 +266,6 @@ const TabContent = ({
   onDelete: (id: string) => void;
 }) => {
   const EmptyIcon = type === 'command' ? Terminal : FileText;
-  const Card = type === 'command' ? CommandCard : NoteCard;
   const label = type === 'command' ? 'Command' : 'Note';
 
   return (
@@ -294,7 +293,11 @@ const TabContent = ({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <Card key={item.id} {...(type === 'command' ? { command: item } : { note: item })} onEdit={onEdit} onDelete={onDelete} />
+            type === 'command' ? (
+              <CommandCard key={item.id} command={item} onEdit={onEdit} onDelete={onDelete} />
+            ) : (
+              <NoteCard key={item.id} note={item} onEdit={onEdit} onDelete={onDelete} />
+            )
           ))}
         </div>
       )}
