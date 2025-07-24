@@ -17,21 +17,47 @@ interface CommandAnalysis {
 }
 
 serve(async (req) => {
+  console.log('AI Assistant function called:', req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { command, title, description, action } = await req.json();
+    console.log('Processing request...');
+    
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body parsed:', requestBody);
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
 
-    console.log('Received request:', { command, title, description, action });
+    const { command, title, description, action } = requestBody;
+
+    console.log('Extracted data:', { command, title, description, action });
 
     if (!openAIApiKey) {
-      console.error('OpenAI API key not found');
+      console.error('OpenAI API key not found in environment');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({ error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    if (!command || !action) {
+      console.error('Missing required fields:', { command: !!command, action: !!action });
+      return new Response(
+        JSON.stringify({ error: 'Command and action are required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
@@ -86,13 +112,18 @@ serve(async (req) => {
         break;
 
       default:
+        console.error('Invalid action:', action);
         return new Response(
-          JSON.stringify({ error: 'Invalid action' }),
+          JSON.stringify({ error: 'Invalid action. Must be analyze, validate, or suggest_similar' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
         );
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log('Making OpenAI API call...');
+    console.log('API Key present:', !!openAIApiKey);
+    console.log('API Key length:', openAIApiKey?.length || 0);
+
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -109,18 +140,26 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    console.log('OpenAI response status:', openAIResponse.status);
+
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', openAIResponse.status, errorText);
+      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await openAIResponse.json();
+    console.log('OpenAI response received successfully');
+    
     const assistantResponse = data.choices[0].message.content;
 
     // Try to parse as JSON, fallback to text response
     let result;
     try {
       result = JSON.parse(assistantResponse);
-    } catch {
+      console.log('Successfully parsed AI response as JSON');
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
       result = { 
         response: assistantResponse,
         error: 'Failed to parse AI response as JSON'
@@ -133,10 +172,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in AI assistant function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         error: 'AI assistant error', 
-        details: error.message 
+        details: error.message,
+        stack: error.stack 
       }),
       {
         status: 500,
