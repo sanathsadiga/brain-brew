@@ -29,9 +29,7 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
   return (
     <span className="font-mono">
       {displayText}
-      <span className={`inline-block w-2 h-5 bg-primary ${showCursor ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
-        |
-      </span>
+      <span className={`inline-block w-0.5 h-8 bg-primary ml-1 ${showCursor ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`} />
     </span>
   );
 };
