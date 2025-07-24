@@ -8,6 +8,7 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showCursor, setShowCursor] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
@@ -20,14 +21,34 @@ const TypingAnimation = ({ text, speed = 150 }: { text: string; speed?: number }
   }, []);
 
   useEffect(() => {
-    if (hasStarted && currentIndex < text.length) {
-      const timeout = setTimeout(() => {
-        setDisplayText(text.slice(0, currentIndex + 1));
-        setCurrentIndex(currentIndex + 1);
-      }, speed);
-      return () => clearTimeout(timeout);
-    }
-  }, [currentIndex, text, speed, hasStarted]);
+    if (!hasStarted) return;
+
+    const timeout = setTimeout(() => {
+      if (isDeleting) {
+        // Backspacing
+        if (currentIndex > 0) {
+          setDisplayText(text.slice(0, currentIndex - 1));
+          setCurrentIndex(currentIndex - 1);
+        } else {
+          // Finished deleting, start typing again
+          setIsDeleting(false);
+        }
+      } else {
+        // Typing
+        if (currentIndex < text.length) {
+          setDisplayText(text.slice(0, currentIndex + 1));
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          // Finished typing, pause then start deleting
+          setTimeout(() => {
+            setIsDeleting(true);
+          }, 2000); // Pause for 2 seconds when complete
+        }
+      }
+    }, isDeleting ? speed / 2 : speed); // Faster when deleting
+
+    return () => clearTimeout(timeout);
+  }, [currentIndex, text, speed, hasStarted, isDeleting]);
 
   useEffect(() => {
     const cursorInterval = setInterval(() => {
