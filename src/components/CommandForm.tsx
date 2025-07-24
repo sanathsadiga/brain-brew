@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeText, sanitizeCommand, validateTags } from '@/lib/validation';
 import { Loader2, Sparkles, AlertTriangle, CheckCircle, X } from 'lucide-react';
 
 interface Command {
@@ -120,20 +121,31 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
 
     setLoading(true);
     
-    const tagsArray = formData.tags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
-
     try {
+      // Input validation and sanitization
+      if (!formData.title.trim() || !formData.command.trim()) {
+        throw new Error('Title and command are required');
+      }
+
+      const sanitizedTitle = sanitizeText(formData.title);
+      const sanitizedCommand = sanitizeCommand(formData.command);
+      const sanitizedDescription = sanitizeText(formData.description);
+      
+      const tagsArray = validateTags(
+        formData.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0)
+      );
+
       if (command) {
         // Update existing command
         const { error } = await supabase
           .from('commands')
           .update({
-            title: formData.title,
-            command: formData.command,
-            description: formData.description || null,
+            title: sanitizedTitle,
+            command: sanitizedCommand,
+            description: sanitizedDescription || null,
             tags: tagsArray.length > 0 ? tagsArray : null,
           })
           .eq('id', command.id);
@@ -149,9 +161,9 @@ const CommandForm: React.FC<CommandFormProps> = ({ isOpen, onOpenChange, command
         const { error } = await supabase
           .from('commands')
           .insert({
-            title: formData.title,
-            command: formData.command,
-            description: formData.description || null,
+            title: sanitizedTitle,
+            command: sanitizedCommand,
+            description: sanitizedDescription || null,
             tags: tagsArray.length > 0 ? tagsArray : null,
             user_id: user.id,
           });

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeText, validateTags } from '@/lib/validation';
 import { Loader2 } from 'lucide-react';
 
 interface Note {
@@ -57,19 +58,29 @@ const NoteForm: React.FC<NoteFormProps> = ({ isOpen, onOpenChange, note, onSucce
 
     setLoading(true);
     
-    const tagsArray = formData.tags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
-
     try {
+      // Input validation and sanitization
+      if (!formData.title.trim() || !formData.content.trim()) {
+        throw new Error('Title and content are required');
+      }
+
+      const sanitizedTitle = sanitizeText(formData.title);
+      const sanitizedContent = sanitizeText(formData.content);
+      
+      const tagsArray = validateTags(
+        formData.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0)
+      );
+
       if (note) {
         // Update existing note
         const { error } = await supabase
           .from('notes')
           .update({
-            title: formData.title,
-            content: formData.content,
+            title: sanitizedTitle,
+            content: sanitizedContent,
             tags: tagsArray.length > 0 ? tagsArray : null,
           })
           .eq('id', note.id);
@@ -85,8 +96,8 @@ const NoteForm: React.FC<NoteFormProps> = ({ isOpen, onOpenChange, note, onSucce
         const { error } = await supabase
           .from('notes')
           .insert({
-            title: formData.title,
-            content: formData.content,
+            title: sanitizedTitle,
+            content: sanitizedContent,
             tags: tagsArray.length > 0 ? tagsArray : null,
             user_id: user.id,
           });
