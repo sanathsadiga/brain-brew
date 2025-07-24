@@ -107,6 +107,48 @@ export type Database = {
         }
         Relationships: []
       }
+      versions: {
+        Row: {
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_current: boolean
+          item_id: string
+          item_type: string
+          tags: string[] | null
+          title: string
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_current?: boolean
+          item_id: string
+          item_type: string
+          tags?: string[] | null
+          title: string
+          user_id: string
+          version_number: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_current?: boolean
+          item_id?: string
+          item_type?: string
+          tags?: string[] | null
+          title?: string
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
